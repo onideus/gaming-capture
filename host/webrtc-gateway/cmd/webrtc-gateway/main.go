@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/zachmartin/gaming-capture/host/webrtc-gateway/internal/config"
+	"github.com/zachmartin/gaming-capture/host/webrtc-gateway/internal/media"
 )
 
 func main() {
@@ -19,6 +20,23 @@ func main() {
 	log.Printf("  HTTP Addr:  %s", cfg.HTTPListenAddr)
 	log.Printf("  Codec:      %s", cfg.VideoCodec)
 	log.Printf("  Max Bitrate: %d kbps", cfg.MaxBitrateKbps)
+
+	// Start IPC consumer
+	ipc := media.NewIPCConsumer(cfg.IPCSocketPath)
+	if err := ipc.Start(); err != nil {
+		log.Fatalf("Failed to start IPC consumer: %v", err)
+	}
+
+	// Frame consumer goroutine (placeholder - will feed into WebRTC in Phase 4)
+	go func() {
+		for frame := range ipc.Frames {
+			// For now, just log keyframes
+			if frame.IsKeyFrame {
+				log.Printf("Received keyframe: %s, %d bytes, PTS=%d",
+					frame.Type, len(frame.Data), frame.PTS)
+			}
+		}
+	}()
 
 	// Setup HTTP server with placeholder routes
 	mux := http.NewServeMux()
@@ -51,6 +69,7 @@ func main() {
 		<-sigCh
 		log.Println("Shutting down...")
 		cancel()
+		ipc.Stop()
 		server.Shutdown(context.Background())
 	}()
 

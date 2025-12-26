@@ -16,12 +16,26 @@
     "swift-dependencies": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/Config.swiftdeps",
     "diagnostics": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/Config.dia"
   },
+  "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/IPCClient.swift": {
+    "dependencies": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/IPCClient.d",
+    "object": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/IPCClient.swift.o",
+    "swiftmodule": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/IPCClient~partial.swiftmodule",
+    "swift-dependencies": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/IPCClient.swiftdeps",
+    "diagnostics": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/IPCClient.dia"
+  },
   "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/PreviewWindow.swift": {
     "dependencies": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/PreviewWindow.d",
     "object": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/PreviewWindow.swift.o",
     "swiftmodule": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/PreviewWindow~partial.swiftmodule",
     "swift-dependencies": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/PreviewWindow.swiftdeps",
     "diagnostics": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/PreviewWindow.dia"
+  },
+  "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/VideoEncoder.swift": {
+    "dependencies": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/VideoEncoder.d",
+    "object": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/VideoEncoder.swift.o",
+    "swiftmodule": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/VideoEncoder~partial.swiftmodule",
+    "swift-dependencies": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/VideoEncoder.swiftdeps",
+    "diagnostics": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/VideoEncoder.dia"
   },
   "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/main.swift": {
     "dependencies": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/main.d",

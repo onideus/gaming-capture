@@ -2,10 +2,16 @@ import Foundation
 import AppKit
 import AVFoundation
 
-class AppDelegate: NSObject, NSApplicationDelegate, CaptureSessionDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, CaptureSessionDelegate, VideoEncoderDelegate {
     private var captureSession: CaptureSession?
+    private var videoEncoder: VideoEncoder?
+    private var ipcClient: IPCClient?
     private var previewController: PreviewWindowController?
     private let config: CaptureConfig
+
+    private var frameCount: Int64 = 0
+    private var bytesSent: Int64 = 0
+    private var lastStatsTime = Date()
 
     init(config: CaptureConfig) {
         self.config = config
@@ -58,6 +64,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, CaptureSessionDelegate {
             return
         }
 
+        // Initialize video encoder
+        do {
+            videoEncoder = try VideoEncoder(config: config)
+            videoEncoder?.delegate = self
+        } catch {
+            print("\nFailed to initialize video encoder: \(error)")
+            NSApp.terminate(nil)
+            return
+        }
+
+        // Initialize IPC client
+        ipcClient = IPCClient(socketPath: config.ipcSocketPath)
+        do {
+            try ipcClient?.connect()
+        } catch {
+            print("\nWarning: IPC connection failed: \(error)")
+            print("  Start the webrtc-gateway first, then restart capture-service")
+            print("  Continuing without IPC (preview only mode)")
+        }
+
         guard let session = captureSession else { return }
 
         // Create preview window
@@ -74,12 +100,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, CaptureSessionDelegate {
         // Start capture
         session.start()
 
-        print("\nCapture started. Close the preview window or press Ctrl+C to stop.")
+        let ipcStatus = ipcClient?.connected == true ? "connected" : "not connected"
+        print("\nCapture started (IPC: \(ipcStatus)). Close the preview window or press Ctrl+C to stop.")
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         print("\nShutting down...")
         captureSession?.stop()
+        videoEncoder?.flush()
+        videoEncoder?.invalidate()
+        ipcClient?.disconnect()
         print("Capture service stopped.")
     }
 
@@ -90,11 +120,45 @@ class AppDelegate: NSObject, NSApplicationDelegate, CaptureSessionDelegate {
     // MARK: - CaptureSessionDelegate
 
     func captureSession(_ session: CaptureSession, didOutput sampleBuffer: CMSampleBuffer) {
-        // For now, just receiving frames - encoding will come in Phase 3
+        videoEncoder?.encode(sampleBuffer)
     }
 
     func captureSession(_ session: CaptureSession, didEncounterError error: Error) {
         print("Capture error: \(error)")
+    }
+
+    // MARK: - VideoEncoderDelegate
+
+    func videoEncoder(_ encoder: VideoEncoder, didEncode frame: EncodedVideoFrame) {
+        // Send to IPC if connected
+        if let client = ipcClient, client.connected {
+            do {
+                try client.send(frame: frame)
+                frameCount += 1
+                bytesSent += Int64(frame.data.count)
+
+                // Log stats every 5 seconds
+                let now = Date()
+                if now.timeIntervalSince(lastStatsTime) >= 5.0 {
+                    let mbSent = Double(bytesSent) / 1_000_000.0
+                    let elapsed = now.timeIntervalSince(lastStatsTime)
+                    let mbps = mbSent / elapsed * 8.0
+                    print("Encoded: \(frameCount) frames, \(String(format: "%.1f", mbps)) Mbps")
+                    lastStatsTime = now
+                    bytesSent = 0
+                }
+            } catch {
+                print("IPC send error: \(error)")
+                // Try to reconnect
+                if client.reconnect() {
+                    print("IPC reconnected")
+                }
+            }
+        }
+    }
+
+    func videoEncoder(_ encoder: VideoEncoder, didEncounterError error: Error) {
+        print("Encoder error: \(error)")
     }
 }
 
