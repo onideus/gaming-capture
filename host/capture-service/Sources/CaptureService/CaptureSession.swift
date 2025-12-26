@@ -39,6 +39,10 @@ final class CaptureSession: NSObject {
 
     private var _previewLayer: AVCaptureVideoPreviewLayer?
 
+    // Frame drop tracking
+    private var droppedFrameCount: Int = 0
+    private var lastDropReportTime = Date()
+
     weak var delegate: CaptureSessionDelegate?
 
     var previewLayer: AVCaptureVideoPreviewLayer {
@@ -117,6 +121,28 @@ final class CaptureSession: NSObject {
         }
         session.addOutput(output)
         self.videoOutput = output
+
+        // Configure the video connection for maximum frame rate
+        if let connection = output.connection(with: .video) {
+            print("Configuring video connection...")
+
+            // Check if we can set frame rate on the connection
+            if connection.isVideoMinFrameDurationSupported {
+                let targetDuration = CMTime(value: 1, timescale: CMTimeScale(config.fps))
+                connection.videoMinFrameDuration = targetDuration
+                print("  Set videoMinFrameDuration to \(config.fps)fps")
+            } else {
+                print("  videoMinFrameDuration not supported on this connection")
+            }
+
+            if connection.isVideoMaxFrameDurationSupported {
+                let targetDuration = CMTime(value: 1, timescale: CMTimeScale(config.fps))
+                connection.videoMaxFrameDuration = targetDuration
+                print("  Set videoMaxFrameDuration to \(config.fps)fps")
+            } else {
+                print("  videoMaxFrameDuration not supported on this connection")
+            }
+        }
 
         session.commitConfiguration()
 
@@ -208,26 +234,63 @@ final class CaptureSession: NSObject {
         var matchedRange: AVFrameRateRange?
 
         // First pass: find exact resolution match that supports target FPS
+        // Use tolerance for floating point comparison (e.g., 60.00024 should match 60)
+        let fpsTolerance: Float64 = 1.0
+
+        print("Searching for format: \(targetWidth)x\(targetHeight) @ \(Int(targetFPS))fps")
+
         for format in device.formats {
             let description = format.formatDescription
             let dimensions = CMVideoFormatDescriptionGetDimensions(description)
 
             if dimensions.width == targetWidth && dimensions.height == targetHeight {
+                // Find the best frame rate range for this format
+                // Prefer ranges closest to (but >= ) target FPS
+                var bestRangeForFormat: AVFrameRateRange?
+                var bestRangeDiff: Float64 = Float64.infinity
+
+                let rangeStrings = format.videoSupportedFrameRateRanges.map { "\(Int($0.maxFrameRate))" }.joined(separator: ", ")
+                print("  Found format at \(dimensions.width)x\(dimensions.height) with fps options: \(rangeStrings)")
+
                 for range in format.videoSupportedFrameRateRanges {
-                    // Check if this format supports our target FPS
-                    if range.maxFrameRate >= targetFPS && range.minFrameRate <= targetFPS {
-                        bestFormat = format
-                        matchedRange = range
-                        break
+                    // Check if this range can support our target FPS (within tolerance)
+                    if range.maxFrameRate >= targetFPS - fpsTolerance {
+                        let diff = abs(range.maxFrameRate - targetFPS)
+                        if diff < bestRangeDiff {
+                            bestRangeDiff = diff
+                            bestRangeForFormat = range
+                        }
                     }
                 }
-                // If we found exact match, stop searching
-                if bestFormat != nil { break }
 
-                // Otherwise take first format at this resolution as fallback
-                if bestFormat == nil {
-                    bestFormat = format
-                    matchedRange = format.videoSupportedFrameRateRanges.first
+                if let range = bestRangeForFormat {
+                    print("    -> Best range for this format: \(Int(range.maxFrameRate))fps (diff: \(bestRangeDiff))")
+                    // Found a suitable range - check if it's better than current best
+                    if bestFormat == nil || abs(range.maxFrameRate - targetFPS) < abs(matchedRange!.maxFrameRate - targetFPS) {
+                        bestFormat = format
+                        matchedRange = range
+                        print("    -> Selected as new best format")
+                    }
+                } else {
+                    print("    -> No suitable range found (target: \(Int(targetFPS))fps)")
+                }
+            }
+        }
+
+        // If still no match, take highest FPS format at target resolution
+        if bestFormat == nil {
+            for format in device.formats {
+                let description = format.formatDescription
+                let dimensions = CMVideoFormatDescriptionGetDimensions(description)
+
+                if dimensions.width == targetWidth && dimensions.height == targetHeight {
+                    // Get the highest FPS range for this format
+                    if let highestRange = format.videoSupportedFrameRateRanges.max(by: { $0.maxFrameRate < $1.maxFrameRate }) {
+                        if bestFormat == nil || highestRange.maxFrameRate > matchedRange!.maxFrameRate {
+                            bestFormat = format
+                            matchedRange = highestRange
+                        }
+                    }
                 }
             }
         }
@@ -266,8 +329,14 @@ final class CaptureSession: NSObject {
         }
 
         let dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
-        let fpsInfo = matchedRange.map { "\(Int($0.maxFrameRate))fps max" } ?? "unknown fps"
+        let fpsInfo = matchedRange.map { "supports \(Int($0.minFrameRate))-\(Int($0.maxFrameRate))fps" } ?? "unknown fps"
         print("Applying format: \(dims.width)x\(dims.height) (\(fpsInfo))...")
+
+        // Log all frame rate ranges for this format
+        print("  Available frame rate ranges for this format:")
+        for range in format.videoSupportedFrameRateRanges {
+            print("    - \(range.minFrameRate) to \(range.maxFrameRate) fps (duration: \(range.minFrameDuration.seconds*1000)ms to \(range.maxFrameDuration.seconds*1000)ms)")
+        }
 
         // Apply format - NOTE: For capture cards, we only set the format.
         // Frame rate is determined by the input signal, not software settings.
@@ -275,6 +344,12 @@ final class CaptureSession: NSObject {
         do {
             try device.lockForConfiguration()
             device.activeFormat = format
+
+            // Log what AVFoundation reports as the active frame rate
+            let activeMin = device.activeVideoMinFrameDuration
+            let activeMax = device.activeVideoMaxFrameDuration
+            print("  Active frame duration: min=\(activeMin.seconds*1000)ms (\(1.0/activeMin.seconds)fps), max=\(activeMax.seconds*1000)ms (\(1.0/activeMax.seconds)fps)")
+
             device.unlockForConfiguration()
 
             print("Configured device for \(dims.width)x\(dims.height)")
@@ -311,13 +386,23 @@ extension CaptureSession: AVCaptureVideoDataOutputSampleBufferDelegate {
         didDrop sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
-        // Get the reason for the drop
-        if let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false) as? [[CFString: Any]],
-           let first = attachments.first,
-           let reason = first[kCMSampleBufferAttachmentKey_DroppedFrameReason] {
-            print("Frame dropped: \(reason)")
-        } else {
-            print("Frame dropped (unknown reason)")
+        droppedFrameCount += 1
+
+        // Report dropped frames periodically (every 5 seconds)
+        let now = Date()
+        if now.timeIntervalSince(lastDropReportTime) >= 5.0 {
+            if droppedFrameCount > 0 {
+                // Get the reason for the most recent drop
+                var reason = "unknown"
+                if let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false) as? [[CFString: Any]],
+                   let first = attachments.first,
+                   let dropReason = first[kCMSampleBufferAttachmentKey_DroppedFrameReason] {
+                    reason = "\(dropReason)"
+                }
+                print("⚠️  Dropped \(droppedFrameCount) frames in last 5s (reason: \(reason))")
+                droppedFrameCount = 0
+            }
+            lastDropReportTime = now
         }
     }
 }
