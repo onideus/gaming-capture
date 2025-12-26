@@ -39,6 +39,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, CaptureSessionDelegate {
             return
         }
 
+        // Handle --list-formats
+        if config.listFormats {
+            for device in discoverySession.devices {
+                CaptureSession.listFormats(for: device)
+            }
+            NSApp.terminate(nil)
+            return
+        }
+
         // Initialize capture session
         do {
             captureSession = try CaptureSession(config: config)

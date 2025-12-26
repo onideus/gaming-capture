@@ -74,29 +74,32 @@ final class CaptureSession: NSObject {
     }
 
     private func configureSession() throws {
-        session.beginConfiguration()
-        defer { session.commitConfiguration() }
-
         // Find capture device
         let device = try findCaptureDevice()
         self.videoDevice = device
+
+        // Configure device format BEFORE adding to session
+        // This must happen outside of beginConfiguration/commitConfiguration
+        try configureDeviceFormat(device)
+
+        // Now configure the session
+        session.beginConfiguration()
 
         // Create and add input
         let input: AVCaptureDeviceInput
         do {
             input = try AVCaptureDeviceInput(device: device)
         } catch {
+            session.commitConfiguration()
             throw CaptureError.inputCreationFailed(error.localizedDescription)
         }
 
         guard session.canAddInput(input) else {
+            session.commitConfiguration()
             throw CaptureError.configurationFailed("Cannot add video input to session")
         }
         session.addInput(input)
         self.videoInput = input
-
-        // Configure device format
-        try configureDeviceFormat(device)
 
         // Create and add output
         let output = AVCaptureVideoDataOutput()
@@ -109,10 +112,13 @@ final class CaptureSession: NSObject {
         ]
 
         guard session.canAddOutput(output) else {
+            session.commitConfiguration()
             throw CaptureError.configurationFailed("Cannot add video output to session")
         }
         session.addOutput(output)
         self.videoOutput = output
+
+        session.commitConfiguration()
 
         print("Capture session configured: \(currentFormat)")
     }
@@ -149,46 +155,130 @@ final class CaptureSession: NSObject {
         throw CaptureError.noDeviceFound
     }
 
-    private func configureDeviceFormat(_ device: AVCaptureDevice) throws {
-        // Find best matching format
-        let targetWidth = Int32(config.width)
-        let targetHeight = Int32(config.height)
-        let targetFPS = Float64(config.fps)
+    static func listFormats(for device: AVCaptureDevice) {
+        print("\nAvailable formats for \(device.localizedName):")
 
-        var bestFormat: AVCaptureDevice.Format?
+        var formatsByResolution: [String: [(format: AVCaptureDevice.Format, fps: [String])]] = [:]
 
         for format in device.formats {
             let description = format.formatDescription
             let dimensions = CMVideoFormatDescriptionGetDimensions(description)
 
-            // Check if dimensions match
+            let resKey = "\(dimensions.width)x\(dimensions.height)"
+            let fpsRanges = format.videoSupportedFrameRateRanges.map { range -> String in
+                if range.minFrameRate == range.maxFrameRate {
+                    return "\(Int(range.maxFrameRate))"
+                } else {
+                    return "\(Int(range.minFrameRate))-\(Int(range.maxFrameRate))"
+                }
+            }
+
+            let entry = (format: format, fps: fpsRanges)
+            if formatsByResolution[resKey] == nil {
+                formatsByResolution[resKey] = [entry]
+            } else {
+                formatsByResolution[resKey]?.append(entry)
+            }
+        }
+
+        // Sort by resolution (descending)
+        let sortedKeys = formatsByResolution.keys.sorted { a, b in
+            let aWidth = Int(a.split(separator: "x").first ?? "0") ?? 0
+            let bWidth = Int(b.split(separator: "x").first ?? "0") ?? 0
+            return aWidth > bWidth
+        }
+
+        for resKey in sortedKeys {
+            guard let entries = formatsByResolution[resKey] else { continue }
+            let allFPS = Set(entries.flatMap { $0.fps }).sorted { a, b in
+                let aVal = Int(a.split(separator: "-").last ?? "0") ?? 0
+                let bVal = Int(b.split(separator: "-").last ?? "0") ?? 0
+                return aVal > bVal
+            }
+            print("  \(resKey): \(allFPS.joined(separator: ", ")) fps")
+        }
+    }
+
+    private func configureDeviceFormat(_ device: AVCaptureDevice) throws {
+        let targetWidth = Int32(config.width)
+        let targetHeight = Int32(config.height)
+        let targetFPS = Float64(config.fps)
+
+        var bestFormat: AVCaptureDevice.Format?
+        var matchedRange: AVFrameRateRange?
+
+        // First pass: find exact resolution match that supports target FPS
+        for format in device.formats {
+            let description = format.formatDescription
+            let dimensions = CMVideoFormatDescriptionGetDimensions(description)
+
             if dimensions.width == targetWidth && dimensions.height == targetHeight {
-                // Find frame rate range that supports target FPS
                 for range in format.videoSupportedFrameRateRanges {
-                    if range.minFrameRate <= targetFPS && range.maxFrameRate >= targetFPS {
+                    // Check if this format supports our target FPS
+                    if range.maxFrameRate >= targetFPS && range.minFrameRate <= targetFPS {
                         bestFormat = format
+                        matchedRange = range
                         break
+                    }
+                }
+                // If we found exact match, stop searching
+                if bestFormat != nil { break }
+
+                // Otherwise take first format at this resolution as fallback
+                if bestFormat == nil {
+                    bestFormat = format
+                    matchedRange = format.videoSupportedFrameRateRanges.first
+                }
+            }
+        }
+
+        // If no exact resolution match, find closest larger resolution
+        if bestFormat == nil {
+            print("Resolution \(targetWidth)x\(targetHeight) not found, searching for alternatives...")
+            CaptureSession.listFormats(for: device)
+
+            var closestFormat: AVCaptureDevice.Format?
+            var closestDiff = Int32.max
+
+            for format in device.formats {
+                let description = format.formatDescription
+                let dimensions = CMVideoFormatDescriptionGetDimensions(description)
+
+                // Only consider formats >= target resolution
+                if dimensions.width >= targetWidth && dimensions.height >= targetHeight {
+                    let diff = (dimensions.width - targetWidth) + (dimensions.height - targetHeight)
+
+                    if diff < closestDiff {
+                        closestFormat = format
+                        closestDiff = diff
+                        matchedRange = format.videoSupportedFrameRateRanges.first
                     }
                 }
             }
 
-            if bestFormat != nil { break }
+            bestFormat = closestFormat
         }
 
-        // If exact match not found, try to find closest
-        if bestFormat == nil {
-            print("Exact format \(targetWidth)x\(targetHeight)@\(Int(targetFPS))fps not found, using device default")
+        guard let format = bestFormat else {
+            print("No suitable format found, using device default")
+            CaptureSession.listFormats(for: device)
             return
         }
 
-        // Apply format
+        let dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+        let fpsInfo = matchedRange.map { "\(Int($0.maxFrameRate))fps max" } ?? "unknown fps"
+        print("Applying format: \(dims.width)x\(dims.height) (\(fpsInfo))...")
+
+        // Apply format - NOTE: For capture cards, we only set the format.
+        // Frame rate is determined by the input signal, not software settings.
+        // Setting activeVideoMinFrameDuration can block indefinitely on capture cards.
         do {
             try device.lockForConfiguration()
-            device.activeFormat = bestFormat!
-            device.activeVideoMinFrameDuration = CMTime(value: 1, timescale: CMTimeScale(targetFPS))
-            device.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: CMTimeScale(targetFPS))
+            device.activeFormat = format
             device.unlockForConfiguration()
-            print("Configured device for \(targetWidth)x\(targetHeight) @ \(Int(targetFPS))fps")
+
+            print("Configured device for \(dims.width)x\(dims.height)")
+            print("  (Frame rate is determined by input signal)")
         } catch {
             throw CaptureError.configurationFailed("Failed to configure device: \(error.localizedDescription)")
         }
