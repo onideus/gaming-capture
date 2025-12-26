@@ -1,0 +1,19 @@
+{
+  "": {
+    "swift-dependencies": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/master.swiftdeps"
+  },
+  "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/Config.swift": {
+    "dependencies": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/Config.d",
+    "object": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/Config.swift.o",
+    "swiftmodule": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/Config~partial.swiftmodule",
+    "swift-dependencies": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/Config.swiftdeps",
+    "diagnostics": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/Config.dia"
+  },
+  "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/main.swift": {
+    "dependencies": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/main.d",
+    "object": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/main.swift.o",
+    "swiftmodule": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/main~partial.swiftmodule",
+    "swift-dependencies": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/main.swiftdeps",
+    "diagnostics": "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/main.dia"
+  }
+}
