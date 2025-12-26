@@ -311,6 +311,13 @@ extension CaptureSession: AVCaptureVideoDataOutputSampleBufferDelegate {
         didDrop sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
-        // Frame dropped - could log this for debugging
+        // Get the reason for the drop
+        if let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false) as? [[CFString: Any]],
+           let first = attachments.first,
+           let reason = first[kCMSampleBufferAttachmentKey_DroppedFrameReason] {
+            print("Frame dropped: \(reason)")
+        } else {
+            print("Frame dropped (unknown reason)")
+        }
     }
 }

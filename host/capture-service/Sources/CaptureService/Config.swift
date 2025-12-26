@@ -14,6 +14,7 @@ struct CaptureConfig {
     var videoBitrateMbps: Int   // e.g., 25
     var ipcSocketPath: String   // e.g., "/tmp/elgato_stream.sock"
     var listFormats: Bool       // just list formats and exit
+    var testIPC: Bool           // run IPC test and exit
 
     static func fromCommandLine() -> CaptureConfig {
         var config = CaptureConfig(
@@ -24,7 +25,8 @@ struct CaptureConfig {
             videoCodec: .h264,
             videoBitrateMbps: 25,
             ipcSocketPath: "/tmp/elgato_stream.sock",
-            listFormats: false
+            listFormats: false,
+            testIPC: false
         )
 
         let args = CommandLine.arguments
@@ -68,6 +70,8 @@ struct CaptureConfig {
                 }
             case "--list-formats":
                 config.listFormats = true
+            case "--test-ipc":
+                config.testIPC = true
             case "--help", "-h":
                 printUsage()
                 exit(0)
@@ -104,6 +108,7 @@ struct CaptureConfig {
           --socket <path>    IPC socket path (default: /tmp/elgato_stream.sock)
           --device <id>      Capture device ID (default: auto-detect Elgato)
           --list-formats     List available capture formats and exit
+          --test-ipc         Test IPC connection and exit
           --help, -h         Show this help
         """)
     }

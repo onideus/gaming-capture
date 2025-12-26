@@ -20,20 +20,22 @@ enum IPCError: Error, CustomStringConvertible {
     }
 }
 
-// IPC Protocol Constants
-private enum IPCFrameType: UInt8 {
-    case h264 = 0x01
-    case hevc = 0x02
-    case audioPCM = 0x10
+// IPC Protocol Constants - matches Go's MessageType
+private enum IPCMessageType: UInt8 {
+    case video = 0x01
+    case audio = 0x02
+    case metadata = 0x03
 }
 
-private enum IPCFlags: UInt8 {
-    case none = 0x00
-    case keyframe = 0x01
+// JSON metadata structure for video frames
+private struct VideoFrameMetadata: Encodable {
+    let pts: Int64
+    let dts: Int64
+    let keyframe: Bool
+    let width: Int
+    let height: Int
+    let codec: String
 }
-
-// Header: Type(1) + Flags(1) + PTS(8) + Length(4) = 14 bytes
-private let headerSize = 14
 
 final class IPCClient {
     private var socketFD: Int32 = -1
@@ -108,29 +110,48 @@ final class IPCClient {
             throw IPCError.notConnected
         }
 
-        // Build header
-        var header = Data(capacity: headerSize)
+        // Build JSON metadata
+        let metadata = VideoFrameMetadata(
+            pts: frame.pts,
+            dts: frame.dts,
+            keyframe: frame.isKeyFrame,
+            width: frame.width,
+            height: frame.height,
+            codec: frame.codec.rawValue
+        )
+
+        let jsonData: Data
+        do {
+            jsonData = try JSONEncoder().encode(metadata)
+        } catch {
+            throw IPCError.sendFailed("Failed to encode metadata: \(error)")
+        }
+
+        // Protocol: [Type: 1 byte] [Length: 4 bytes BE] [JSON + null] [Payload]
+        // Length includes JSON + null terminator + payload
+        let totalLength = UInt32(jsonData.count + 1 + frame.data.count)
+
+        var message = Data()
 
         // Type (1 byte)
-        let frameType: UInt8 = frame.codec == .hevc ? IPCFrameType.hevc.rawValue : IPCFrameType.h264.rawValue
-        header.append(frameType)
+        message.append(IPCMessageType.video.rawValue)
 
-        // Flags (1 byte)
-        let flags: UInt8 = frame.isKeyFrame ? IPCFlags.keyframe.rawValue : IPCFlags.none.rawValue
-        header.append(flags)
+        // Length (4 bytes, big-endian)
+        var lengthBE = totalLength.bigEndian
+        message.append(Data(bytes: &lengthBE, count: 4))
 
-        // PTS (8 bytes, little-endian)
-        var pts = frame.pts.littleEndian
-        header.append(Data(bytes: &pts, count: 8))
+        // JSON metadata
+        message.append(jsonData)
 
-        // Length (4 bytes, little-endian)
-        var length = UInt32(frame.data.count).littleEndian
-        header.append(Data(bytes: &length, count: 4))
+        // Null terminator after JSON
+        message.append(0x00)
 
-        // Send header + payload
+        // Binary payload
+        message.append(frame.data)
+
+        // Send complete message
         try queue.sync {
-            try sendData(header)
-            try sendData(frame.data)
+            try sendData(message)
         }
     }
 

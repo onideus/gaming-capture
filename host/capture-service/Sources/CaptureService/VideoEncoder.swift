@@ -23,6 +23,8 @@ struct EncodedVideoFrame {
     let pts: Int64           // microseconds
     let dts: Int64           // microseconds
     let isKeyFrame: Bool
+    let width: Int
+    let height: Int
     let codec: VideoCodec
     let data: Data           // Annex B NAL units
 }
@@ -219,6 +221,8 @@ final class VideoEncoder {
             pts: ptsUs,
             dts: dtsUs,
             isKeyFrame: isKeyFrame,
+            width: config.width,
+            height: config.height,
             codec: config.videoCodec,
             data: data
         )

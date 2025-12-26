@@ -13,6 +13,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, CaptureSessionDelegate, Vide
     private var bytesSent: Int64 = 0
     private var lastStatsTime = Date()
 
+    // Pipeline stage counters for debugging frame drops
+    private var capturedFrames: Int64 = 0
+    private var encodedFrames: Int64 = 0
+    private var sentFrames: Int64 = 0
+
     init(config: CaptureConfig) {
         self.config = config
         super.init()
@@ -120,6 +125,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, CaptureSessionDelegate, Vide
     // MARK: - CaptureSessionDelegate
 
     func captureSession(_ session: CaptureSession, didOutput sampleBuffer: CMSampleBuffer) {
+        capturedFrames += 1
         videoEncoder?.encode(sampleBuffer)
     }
 
@@ -130,22 +136,31 @@ class AppDelegate: NSObject, NSApplicationDelegate, CaptureSessionDelegate, Vide
     // MARK: - VideoEncoderDelegate
 
     func videoEncoder(_ encoder: VideoEncoder, didEncode frame: EncodedVideoFrame) {
+        encodedFrames += 1
+
         // Send to IPC if connected
         if let client = ipcClient, client.connected {
             do {
                 try client.send(frame: frame)
+                sentFrames += 1
                 frameCount += 1
                 bytesSent += Int64(frame.data.count)
 
                 // Log stats every 5 seconds
                 let now = Date()
                 if now.timeIntervalSince(lastStatsTime) >= 5.0 {
-                    let mbSent = Double(bytesSent) / 1_000_000.0
                     let elapsed = now.timeIntervalSince(lastStatsTime)
+                    let mbSent = Double(bytesSent) / 1_000_000.0
                     let mbps = mbSent / elapsed * 8.0
-                    print("Encoded: \(frameCount) frames, \(String(format: "%.1f", mbps)) Mbps")
+                    let captureFps = Double(capturedFrames) / elapsed
+                    let encodeFps = Double(encodedFrames) / elapsed
+                    let sendFps = Double(sentFrames) / elapsed
+                    print("Pipeline: captured=\(String(format: "%.1f", captureFps))fps, encoded=\(String(format: "%.1f", encodeFps))fps, sent=\(String(format: "%.1f", sendFps))fps, bitrate=\(String(format: "%.1f", mbps))Mbps")
                     lastStatsTime = now
                     bytesSent = 0
+                    capturedFrames = 0
+                    encodedFrames = 0
+                    sentFrames = 0
                 }
             } catch {
                 print("IPC send error: \(error)")
@@ -164,6 +179,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, CaptureSessionDelegate, Vide
 
 // Parse config and run app
 let config = CaptureConfig.fromCommandLine()
+
+// Handle --test-ipc mode
+if config.testIPC {
+    runIPCTest()
+    exit(0)
+}
 
 // Setup signal handling
 signal(SIGINT) { _ in
