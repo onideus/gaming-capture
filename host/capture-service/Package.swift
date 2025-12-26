@@ -15,6 +15,7 @@ let package = Package(
             name: "CaptureService",
             dependencies: [],
             linkerSettings: [
+                .linkedFramework("AppKit"),
                 .linkedFramework("AVFoundation"),
                 .linkedFramework("CoreMedia"),
                 .linkedFramework("VideoToolbox")

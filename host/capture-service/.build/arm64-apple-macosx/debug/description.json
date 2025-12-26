@@ -24,7 +24,15 @@
       "inputs" : [
         {
           "kind" : "file",
+          "name" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/CaptureSession.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/Config.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/PreviewWindow.swift"
         },
         {
           "kind" : "file",
@@ -43,7 +51,9 @@
       "moduleName" : "CaptureService",
       "moduleOutputPath" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/Modules/CaptureService.swiftmodule",
       "objects" : [
+        "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/CaptureSession.swift.o",
         "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/Config.swift.o",
+        "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/PreviewWindow.swift.o",
         "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/main.swift.o"
       ],
       "otherArguments" : [
@@ -106,7 +116,15 @@
       "outputs" : [
         {
           "kind" : "file",
+          "name" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/CaptureSession.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/Config.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/PreviewWindow.swift.o"
         },
         {
           "kind" : "file",
@@ -119,7 +137,9 @@
       ],
       "prepareForIndexing" : false,
       "sources" : [
+        "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/CaptureSession.swift",
         "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/Config.swift",
+        "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/PreviewWindow.swift",
         "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/main.swift"
       ],
       "tempsPath" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build",
@@ -137,7 +157,9 @@
       "-package-name",
       "capture_service",
       "-c",
+      "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/CaptureSession.swift",
       "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/Config.swift",
+      "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/PreviewWindow.swift",
       "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/main.swift",
       "-I",
       "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/Modules",
@@ -225,7 +247,15 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/CaptureSession.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/Config.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/Sources/CaptureService/PreviewWindow.swift"
         },
         {
           "kind" : "file",
@@ -257,7 +287,15 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/CaptureSession.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/Config.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/zachmartin/projects/active/gaming-capture/host/capture-service/.build/arm64-apple-macosx/debug/CaptureService.build/PreviewWindow.swift.o"
         },
         {
           "kind" : "file",
