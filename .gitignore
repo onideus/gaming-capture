@@ -1,6 +1,7 @@
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
+# ================================
+# Go
+# ================================
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -17,16 +18,80 @@ coverage.*
 *.coverprofile
 profile.cov
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
-
 # Go workspace file
 go.work
 go.work.sum
 
-# env file
+# Built binaries
+webrtc-gateway
+
+# ================================
+# Swift / Swift Package Manager
+# ================================
+
+# Build artifacts
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+
+# ================================
+# Xcode
+# ================================
+
+# Build generated
+build/
+DerivedData/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Index and build state
+*.xcodeproj/project.xcworkspace/xcshareddata/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Archives
+*.xcarchive
+
+# Swift Package Manager
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+# CocoaPods (if used)
+Pods/
+Podfile.lock
+
+# Carthage (if used)
+Carthage/Build/
+
+# ================================
+# macOS
+# ================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ================================
+# Common
+# ================================
+
+# Environment files
 .env
+.env.local
+.env.*.local
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# IPC socket (runtime artifact)
+*.sock
